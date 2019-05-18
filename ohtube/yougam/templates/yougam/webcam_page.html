@@ -1,0 +1,167 @@
+﻿<!DOCTYPE html> {% load staticfiles %}
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>web cam</title>
+    <script src="http://code.jquery.com/jquery-latest.js"></script>
+    <script>
+        //.js파일로 나누고 싶으나... 인터넷 캐시 때문에 한번 잘못 만들면 수정해도 안바뀜
+        //웹캠 셋팅
+        window.URL = window.URL || window.webkitURL
+        navigator.getUserMedia = navigator.getUserMedia ||
+            navigator.webkitGetUserMedia ||
+            navigator.mozGetUserMedia ||
+            navigator.msGetUserMedia
+
+        window.requestAnimationFrame = window.requestAnimationFrame ||
+            window.webkitRequestAnimationFrame ||
+            window.mozRequestAnimationFrame ||
+            window.msRequestAnimationFrame ||
+            window.oRequestAnimationFrame
+            //getUserMedia 사용
+            // Integrate navigator.getUserMedia & navigator.mediaDevices.getUserMedia
+        function getUserMedia(constraints, successCallback, errorCallback) {
+            if (!constraints || !successCallback || !errorCallback) {
+                return
+            }
+
+            if (navigator.mediaDevices) {
+                navigator.mediaDevices.getUserMedia(constraints).then(successCallback, errorCallback)
+            } else {
+                navigator.getUserMedia(constraints, successCallback, errorCallback)
+            }
+        }
+
+        //비디오(웹캠) 재생 -> 내부에서 캔버스에 그리는 함수 호출
+        function camvas(ctx, drawFunc) {
+            var self = this
+            this.ctx = ctx
+            this.draw = drawFunc
+                // We can't `new Video()` yet, so we'll resort to the vintage
+                // "hidden div" hack for dynamic loading.
+            var streamContainer = document.createElement('div')
+            this.video = document.createElement('video') //새로 비디오 태그를 생성한듯
+                //속성을 바꾸면 아마 크기 조절이 가능 할 듯
+
+            // If we don't do this, the stream will not be played.
+            // By the way, the play and pause controls work as usual 
+            // for streamed videos.
+            this.video.setAttribute('autoplay', '1')
+                // The video should fill out all of the canvas
+            this.video.setAttribute('width', this.ctx.canvas.width)
+            this.video.setAttribute('height', this.ctx.canvas.height)
+            this.video.setAttribute('style', 'display:none')
+            streamContainer.appendChild(this.video)
+            document.body.appendChild(streamContainer)
+                // The callback happens when we are starting to stream the video.
+            getUserMedia({
+                    video: true
+                }, function(stream) {
+                    // Yay, now our webcam input is treated as a normal video and
+                    // we can start having fun
+                    try {
+                        self.video.srcObject = stream;
+                    } catch (error) {
+                        self.video.src = URL.createObjectURL(stream);
+                    }
+                    // Let's start drawing the canvas!
+                    self.update()
+                }, function(err) {
+                    throw err
+                })
+                // As soon as we can draw a new frame on the canvas, we call the `draw` function 
+                // we passed as a parameter.
+            this.update = function() {
+                var self = this
+                var last = Date.now()
+                var loop = function() {
+                    // For some effects, you might want to know how much time is passed
+                    // since the last frame; that's why we pass along a Delta time `dt`
+                    // variable (expressed in milliseconds)
+                    var dt = Date.now() - last
+                    self.draw(self.video, dt)
+                    last = Date.now()
+                    requestAnimationFrame(loop)
+                }
+                requestAnimationFrame(loop)
+            }
+        }
+
+        //자동 실행 함수 -> jquery에서 ready 함수와 같은 기능
+        window.onload = function() {
+            var ctx = document.getElementsByTagName('canvas')[0].getContext('2d')
+            var draw = function(video, dt) {
+                ctx.drawImage(video, 0, 0)
+            }
+            var myCamvas = new camvas(ctx, draw)
+        }
+
+        $(document).ready(function() { //.js 파일로 옮길거면 이거 없애야함(추가 필요 x)
+            //function show_pixel() {//.js 파일로 옮길거면 이거 넣어야함(추가 필요 x)
+
+
+
+//
+                function go() {
+                    $.ajax({
+                        url: '/yougam/webcam_page_sending/',
+                        dataType: 'json',
+                        type: 'POST',
+                        data: {
+                            data: {
+                                'msg': "?"
+                            }
+                        },
+                        success: function(result) {
+                            $('#output').val('good');
+                        },
+                        error: function(request, status, error) {
+                                $('#output').val('bad');
+                        }
+                    //end ajax
+                    });
+                }
+//
+
+
+
+
+
+
+            $('#activate').click(function() { //.js 파일로 옮길거면 이거 없애고(추가 필요 x) 버튼에 onclick 추가
+            var canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var data = imageData.data;
+
+
+            //alert(data)
+//
+                go();
+//
+
+                }) //
+                /*
+                 */
+                //end function
+        //}
+
+        //end ready~
+        });
+    </script>
+</head>
+
+<body>
+    <canvas id="canvas" width=680 height=480></canvas>
+    <br />
+
+    <input type="button" id="activate" value="activate" />
+    <!-- .js로 옮기려면 onclick="show_pixel(); 달아줘야 함." -->
+    <br />
+    <br />
+    <textarea id="output" disabled="disabled" cols="10" rows="1"></textarea>
+
+</body>
+
+</html>
